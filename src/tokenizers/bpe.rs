@@ -1,7 +1,6 @@
-use std::{collections::HashMap, ops::Add};
+use std::collections::HashMap;
 use pyo3::{pyclass, pymethods};
-
-const EOW: &str = "</w>";
+use crate::tokenizers::utils::wrap_word;
 
 #[pyclass]
 pub struct BPE {
@@ -26,6 +25,9 @@ impl BPE {
         
         for index in 0..self.k {
             let pair_stats: HashMap<Vec<String>, u32> = self.get_pair_stats();
+            if pair_stats.is_empty() {
+                break;
+            }
             let best_pair: &Vec<String> = pair_stats.iter().max_by_key(|x| x.1).unwrap().0;
             self.bpe_codes.insert(best_pair.to_vec(), index);
             self.vocabulary = self.get_new_vocabulary(best_pair);
@@ -42,8 +44,14 @@ impl BPE {
     }
 
     pub fn tokenize(&self, word: &str) -> Vec<String> {
-        let mut word: Vec<String> = word.chars().collect::<Vec<char>>().iter().map(|c| c.to_string()).collect();
-        word.push(EOW.to_string());
+        let mut word: Vec<String> = wrap_word(
+            word
+                .chars()
+                .collect::<Vec<char>>()
+                .iter()
+                .map(|c| c.to_string())
+                .collect()
+        );
         
         loop {
             let pairs = self.get_pairs(&word);
@@ -98,14 +106,15 @@ impl BPE {
         text
             .split(" ")
             .fold(HashMap::new(), |mut words, word| {
-                let word: String = word.chars()
-                    .collect::<Vec<char>>()
-                    .iter()
-                    .map(|c| c.to_string())
-                    .collect::<Vec<String>>()
-                    .join(" ")
-                    .add(&(" ".to_string() + EOW));
-                *words.entry(word).or_insert(0) += 1;
+                let word: Vec<String> = wrap_word(
+                    word
+                        .chars()
+                        .collect::<Vec<char>>()
+                        .iter()
+                        .map(|c| c.to_string())
+                        .collect::<Vec<String>>()
+                );
+                *words.entry(word.join(" ")).or_insert(0) += 1;
                 words
             })
     }
