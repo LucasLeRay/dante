@@ -1,6 +1,8 @@
 use std::collections::HashMap;
+
 use pyo3::{pyclass, pymethods};
-use crate::tokenizers::utils::wrap_word;
+
+use crate::tokenization::special_tokens;
 
 #[pyclass]
 pub struct BPE {
@@ -143,4 +145,16 @@ impl BPE {
 
         new_vocabulary
     }
+}
+
+pub fn wrap_word(word: Vec<String>) -> Vec<String> {
+    let mut wrapped: Vec<String> = Vec::new();
+
+    wrapped.push(special_tokens::SOW.to_string());
+    for char in word.iter() {
+        wrapped.push(char.to_owned());
+    }
+    wrapped.push(special_tokens::EOW.to_string());
+
+    wrapped
 }
