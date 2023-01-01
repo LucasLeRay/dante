@@ -1,5 +1,7 @@
 use std::fmt;
 
+use pyo3::pyclass;
+
 pub type Word = String;
 
 // struct Offset {
@@ -9,6 +11,7 @@ pub type Word = String;
 
 // #[derive(Eq, Clone)]
 #[derive(Clone, Debug)]
+#[pyclass]
 pub struct Token {
     pub word: Word,
     // offset: Offset,
@@ -19,15 +22,3 @@ impl fmt::Display for Token {
         write!(f, "{}", self.word)
     }
 }
-
-// impl Hash for Token {
-//     fn hash<H: Hasher>(&self, state: &mut H) {
-//         self.word.hash(state);
-//     }
-// }
-
-// impl PartialEq for Token {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.word == other.word
-//     }
-// }

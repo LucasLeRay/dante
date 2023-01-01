@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use regex::Regex;
 
 use crate::tokenization::token::{Token, Word};
