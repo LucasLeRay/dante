@@ -12,19 +12,19 @@ use super::tokenizers::noop::NoopTokenizer;
 //     tokens: Vec<Token>
 // }
 
-pub struct TokenizationPipeline<'a> {
+pub struct TokenizationPipeline {
     pub vocabulary: Vec<Word>,
-    splitter: &'a (dyn Splitter + 'a),
-    pre_tokenizers: Vec<&'a (dyn PreTokenizer + 'a)>,
-    tokenizer: &'a (dyn Tokenizer + 'a),
+    splitter: Box<dyn Splitter>,
+    pre_tokenizers: Vec<Box<dyn PreTokenizer>>,
+    tokenizer: Box<dyn Tokenizer>,
 }
 
-impl<'a> TokenizationPipeline<'a> {
+impl TokenizationPipeline {
     pub fn new(
-        splitter: &'a dyn Splitter,
-        pre_tokenizers: Option<Vec<&'a dyn PreTokenizer>>,
-        tokenizer: Option<&'a dyn Tokenizer>
-    ) -> TokenizationPipeline<'a> {
+        splitter: Box<dyn Splitter>,
+        pre_tokenizers: Option<Vec<Box<dyn PreTokenizer>>>,
+        tokenizer: Option<Box<dyn Tokenizer>>
+    ) -> TokenizationPipeline {
         TokenizationPipeline {
             splitter,
             pre_tokenizers: match pre_tokenizers {
@@ -32,7 +32,7 @@ impl<'a> TokenizationPipeline<'a> {
                 Some(transformers) => transformers
             },
             tokenizer: match tokenizer {
-                None => &NoopTokenizer{},
+                None => Box::new(NoopTokenizer),
                 Some(t) => t
             },
             vocabulary: Vec::new()
@@ -48,12 +48,12 @@ impl<'a> TokenizationPipeline<'a> {
     }
 
     pub fn fit(&mut self, corpus: &str) {
-        let mut tokens: Vec<Token> = self.pre_process(corpus);
+        let tokens: Vec<Token> = self.pre_process(corpus);
         self.vocabulary = self.tokenizer.extract_vocabulary(&tokens);
     }
 
     pub fn transform(&self, corpus: &str) -> Vec<Token> {
-        let mut tokens: Vec<Token> = self.pre_process(corpus);
+        let tokens: Vec<Token> = self.pre_process(corpus);
         self.tokenizer.tokenize(&self.vocabulary, &tokens)
     }
 
