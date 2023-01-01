@@ -1,4 +1,4 @@
-use pyo3::{pyclass, pymethods};
+use pyo3::{pyclass, pymethods, PyResult};
 
 use crate::tokenization::{
     tokenizers::tokenizer::Tokenizer,
@@ -25,7 +25,7 @@ impl BasicTokenizer {
 }
 
 impl Tokenizer for BasicTokenizer {
-    fn new(vocabulary: Option<&Vec<Word>>, pre_tokenizers: Option<&Vec<PreTokenizerKind>>) -> Self {
+    fn new_(vocabulary: Option<&Vec<Word>>, pre_tokenizers: Option<&Vec<PreTokenizerKind>>) -> Self {
         let vocabulary = match vocabulary {
             Some(v) => v.to_vec(),
             None => vec![]
@@ -42,12 +42,12 @@ impl Tokenizer for BasicTokenizer {
         }
     }
 
-    fn fit(&mut self, corpus: &str) {
+    fn fit_(&mut self, corpus: &str) {
         let tokens: Vec<Token> = self.pre_process(corpus);
         self.vocabulary = self.extract_vocabulary(&tokens);
     }
 
-    fn transform(&self, corpus: &str) -> Vec<Token> {
+    fn transform_(&self, corpus: &str) -> Vec<Token> {
         let tokens: Vec<Token> = self.pre_process(corpus);
         self.tokenize(&self.vocabulary, &tokens)
     }
@@ -56,20 +56,24 @@ impl Tokenizer for BasicTokenizer {
 #[pymethods]
 impl BasicTokenizer {
     #[new]
-    fn new_py(vocabulary: Vec<Word>, pre_tokenizers: Vec<PreTokenizerKind>) -> Self {
-        println!("coucou");
-        BasicTokenizer::new(Some(&vocabulary), Some(&pre_tokenizers))
+    fn new(vocabulary: Vec<Word>, pre_tokenizers: Vec<PreTokenizerKind>) -> Self {
+        BasicTokenizer::new_(Some(&vocabulary), Some(&pre_tokenizers))
     }
 
-    fn fit_py(&mut self, corpus: &str) {
-        BasicTokenizer::fit(self, corpus)
+    fn fit(&mut self, corpus: &str) {
+        BasicTokenizer::fit_(self, corpus)
     }
 
-    fn transform_py(&self, corpus: &str) -> Vec<Token> {
-        BasicTokenizer::transform(self, corpus)
+    fn transform(&self, corpus: &str) -> Vec<Token> {
+        BasicTokenizer::transform_(self, corpus)
     }
 
-    fn fit_transform_py(&mut self, corpus: &str) -> Vec<Token> {
-        BasicTokenizer::fit_transform(self, corpus)
+    fn fit_transform(&mut self, corpus: &str) -> Vec<Token> {
+        BasicTokenizer::fit_transform_(self, corpus)
+    }
+
+    #[getter]
+    fn vocabulary(&self) -> PyResult<Vec<Word>> {
+        Ok(self.vocabulary.to_vec())
     }
 }

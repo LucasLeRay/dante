@@ -4,15 +4,15 @@ use regex::Regex;
 use crate::tokenization::{token::{Token, Word}, special_tokens::UNK, pre_tokenizers::PreTokenizerKind};
 
 pub trait Tokenizer {
-    fn new(vocabulary: Option<&Vec<Word>>, pre_tokenizers: Option<&Vec<PreTokenizerKind>>) -> Self;
+    fn new_(vocabulary: Option<&Vec<Word>>, pre_tokenizers: Option<&Vec<PreTokenizerKind>>) -> Self;
 
-    fn transform(&self, corpus: &str) -> Vec<Token>;
+    fn transform_(&self, corpus: &str) -> Vec<Token>;
 
-    fn fit(&mut self, _corpus: &str) {}
+    fn fit_(&mut self, _corpus: &str) {}
 
-    fn fit_transform(&mut self, corpus: &str) -> Vec<Token> {
-        self.fit(corpus);
-        self.transform(corpus)
+    fn fit_transform_(&mut self, corpus: &str) -> Vec<Token> {
+        self.fit_(corpus);
+        self.transform_(corpus)
     }
 
     fn split(&self, corpus: &str) -> Vec<Token> {
