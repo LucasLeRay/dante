@@ -1,5 +1,4 @@
 use itertools::Itertools;
-use regex::Regex;
 
 use crate::tokenization::{token::{Token, Word}, special_tokens::UNK, pre_tokenizers::PreTokenizerKind};
 
@@ -13,11 +12,6 @@ pub trait Tokenizer {
     fn fit_transform_(&mut self, corpus: &str) -> Vec<Token> {
         self.fit_(corpus);
         self.transform_(corpus)
-    }
-
-    fn split(&self, corpus: &str) -> Vec<Token> {
-        let re = Regex::new(r"\S+").unwrap();
-        re.find_iter(corpus).map(|mat| Token{word: mat.as_str().to_owned()}).collect()
     }
 
     fn extract_vocabulary(&self, tokens: &Vec<Token>) -> Vec<Word> {

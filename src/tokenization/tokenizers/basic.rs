@@ -16,10 +16,11 @@ pub struct BasicTokenizer {
 
 impl BasicTokenizer {
     fn pre_process(&self, corpus: &str) -> Vec<Token> {
-        let mut tokens: Vec<Token> = self.split(&corpus);
+        let mut tokens: Vec<Token> = vec![Token{word: corpus.to_string()}];
         for pre_tokenizer in self.pre_tokenizers.iter() {
             tokens = pre_tokenizer.get_processor().pre_tokenize(&tokens);
         }
+
         tokens
     }
 }
