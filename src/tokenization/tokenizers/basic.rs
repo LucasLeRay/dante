@@ -10,8 +10,8 @@ use crate::tokenization::{
 
 #[pyclass]
 pub struct BasicTokenizer {
-    pre_tokenizers: Vec<PreTokenizerKind>,
     pub vocabulary: Vec<Word>,
+    pre_tokenizers: Vec<PreTokenizerKind>,
 }
 
 impl BasicTokenizer {

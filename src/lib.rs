@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+
 use tokenization::{
     tokenizers::basic::BasicTokenizer,
     pre_tokenizers::PreTokenizerKind
