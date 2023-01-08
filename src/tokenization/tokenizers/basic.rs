@@ -15,18 +15,10 @@ pub struct BasicTokenizer {
 }
 
 impl BasicTokenizer {
-    fn pre_process(&self, corpus: &str) -> Vec<Token> {
-        let mut tokens: Vec<Token> = vec![Token{word: corpus.to_string()}];
-        for pre_tokenizer in self.pre_tokenizers.iter() {
-            tokens = pre_tokenizer.get_processor().pre_tokenize(&tokens);
-        }
-
-        tokens
-    }
-}
-
-impl Tokenizer for BasicTokenizer {
-    fn new_(vocabulary: Option<&Vec<Word>>, pre_tokenizers: Option<&Vec<PreTokenizerKind>>) -> Self {
+    fn new_(
+        vocabulary: Option<&Vec<Word>>,
+        pre_tokenizers: Option<&Vec<PreTokenizerKind>>
+    ) -> Self {
         let vocabulary = match vocabulary {
             Some(v) => v.to_vec(),
             None => vec![]
@@ -43,6 +35,17 @@ impl Tokenizer for BasicTokenizer {
         }
     }
 
+    fn pre_process(&self, corpus: &str) -> Vec<Token> {
+        let mut tokens: Vec<Token> = vec![Token{word: corpus.to_string()}];
+        for pre_tokenizer in self.pre_tokenizers.iter() {
+            tokens = pre_tokenizer.get_processor().pre_tokenize(&tokens);
+        }
+
+        tokens
+    }
+}
+
+impl Tokenizer for BasicTokenizer {
     fn fit_(&mut self, corpus: &str) {
         let tokens: Vec<Token> = self.pre_process(corpus);
         self.vocabulary = self.extract_vocabulary(&tokens);

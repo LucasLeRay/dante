@@ -1,10 +1,8 @@
 use itertools::Itertools;
 
-use crate::tokenization::{token::{Token, Word}, special_tokens::UNK, pre_tokenizers::PreTokenizerKind};
+use crate::tokenization::{token::{Token, Word}, special_tokens::UNK};
 
 pub trait Tokenizer {
-    fn new_(vocabulary: Option<&Vec<Word>>, pre_tokenizers: Option<&Vec<PreTokenizerKind>>) -> Self;
-
     fn transform_(&self, corpus: &str) -> Vec<Token>;
 
     fn fit_(&mut self, _corpus: &str) {}
