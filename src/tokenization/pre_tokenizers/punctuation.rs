@@ -17,3 +17,49 @@ impl PreTokenizer for Punctuation {
         new_tokens
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tokenization_exclamation() {
+        let punctuation: Punctuation = Punctuation{};
+
+        let input: Vec<Token> = vec![Token{word: "Hello!".to_string()}];
+        let expected: Vec<Token> = vec![
+            Token{word: "Hello".to_string()}, Token{word: "!".to_string()}
+        ];
+
+        let result: Vec<Token> = punctuation.pre_tokenize(&input);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn tokenization_ellipsis() {
+        let punctuation: Punctuation = Punctuation{};
+
+        let input: Vec<Token> = vec![Token{word: "Hello...".to_string()}];
+        let expected: Vec<Token> = vec![
+            Token{word: "Hello".to_string()}, Token{word: "...".to_string()}
+        ];
+
+        let result: Vec<Token> = punctuation.pre_tokenize(&input);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn tokenization_between_words() {
+        let punctuation: Punctuation = Punctuation{};
+
+        let input: Vec<Token> = vec![Token{word: "Hello,Lucas".to_string()}];
+        let expected: Vec<Token> = vec![
+            Token{word: "Hello".to_string()},
+            Token{word: ",".to_string()},
+            Token{word: "Lucas".to_string()}
+        ];
+
+        let result: Vec<Token> = punctuation.pre_tokenize(&input);
+        assert_eq!(result, expected);
+    }
+}

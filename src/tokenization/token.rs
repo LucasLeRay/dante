@@ -4,7 +4,7 @@ use pyo3::{pyclass, pymethods, PyResult};
 
 pub type Word = String;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 #[pyclass]
 pub struct Token {
     pub word: Word,

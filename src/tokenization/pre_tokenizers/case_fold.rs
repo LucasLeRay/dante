@@ -8,3 +8,19 @@ impl PreTokenizer for CaseFold {
         tokens.iter().map(|token| Token{word: token.word.to_lowercase()}).collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tokenization() {
+        let case_fold: CaseFold = CaseFold{};
+
+        let input: Vec<Token> = vec![Token{word: "HeLlO".to_string()}];
+        let expected: Vec<Token> = vec![Token{word: "hello".to_string()}];
+
+        let result: Vec<Token> = case_fold.pre_tokenize(&input);
+        assert_eq!(result, expected);
+    }
+}

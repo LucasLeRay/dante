@@ -13,7 +13,7 @@ mod utils;
 pub enum PreTokenizerKind {
     CaseFold,
     Punctuation,
-    Whitespace,
+    WhiteSpace,
 }
 
 impl PreTokenizerKind {
@@ -21,7 +21,7 @@ impl PreTokenizerKind {
         match self {
             PreTokenizerKind::CaseFold => &case_fold::CaseFold,
             PreTokenizerKind::Punctuation => &punctuation::Punctuation,
-            PreTokenizerKind::Whitespace => &whitespace::Whitespace,
+            PreTokenizerKind::WhiteSpace => &whitespace::WhiteSpace,
         }
     }
 }
