@@ -27,35 +27,32 @@ impl MLE {
     }
 
     fn fit_(&mut self, text: &Vec<Word>, vocabulary: &Vec<Word>) {
-        self.text = wrap_sentence(text, self.n);
+        self.text = wrap_sentence(text, self.n, true, false);
         self.vocabulary = vocabulary.to_vec();
     }
 
-    fn generate_word_(&self) -> Word {
-        let mut word_frequency: HashMap<Word, f32> = HashMap::new();
+    fn generate_word_(&self, sentence: &Vec<Word>) -> Word {
+        let mut words_frequency: HashMap<Word, f32> = HashMap::new();
 
         let context: Vec<Word> = self.text[
-            (self.text.len()-self.n as usize+1)..(self.text.len())
+            (sentence.len()-self.n as usize+1)..(sentence.len())
         ].to_vec();
-        let context_count: u32 = self.count_of_sequence(&context);
 
         for word in self.vocabulary.iter() {
             let mut full_sentence: Vec<Word> = context.to_owned();
             full_sentence.push(word.to_owned());
 
-            let ngram_count: u32 = self.count_of_sequence(&full_sentence);
-            let frequency: f32 = ngram_count as f32 / context_count as f32;
-
-            word_frequency.insert(word.to_owned(), frequency);
+            let frequency = self.sequence_probability(&full_sentence);
+            words_frequency.insert(word.to_owned(), frequency);
         }
 
-        println!("{:?}", word_frequency);
+        println!("{:?}", words_frequency);
 
-        word_frequency
+        words_frequency
             .iter()
             .max_by(|a, b| f32::total_cmp(a.1, b.1))
-            .map(|(k, _v)| k.to_owned())
             .unwrap()
+            .0.to_owned()
     }
 
     fn count_of_sequence(&self, sequence: &Vec<Word>) -> u32 {
@@ -71,9 +68,44 @@ impl MLE {
                 count += 1;
             }
         }
-        println!("sequence({:?}), count: {}", sequence, count);
+        // println!("sequence({:?}), count: {}", sequence, count);
 
         count
+    }
+
+    fn ngram_probability(&self, context: &Vec<Word>, ngram: &Vec<Word>) -> f32 {
+        self.count_of_sequence(&ngram) as f32 / self.count_of_sequence(&context) as f32
+    }
+
+    // use chain rule of probability to compute the whole probability of a sequence
+    // using its ngram.
+    fn sequence_probability(&self, sequence: &Vec<Word>) -> f32 {
+        let mut probability: f32 = 0.0;
+
+        for i in 0..sequence.len() {
+            let start_index: usize = if i < self.n as usize {0} else {i as usize - self.n as usize + 1};
+            let word_index: usize = i as usize;
+            // println!("start: ({}), end: ({}), test_set: ({:?})", start_index, word_index, sequence);
+
+            let context: Vec<Word> = sequence[start_index..word_index as usize].to_owned();
+            let ngram: Vec<Word> = sequence[start_index..word_index+1 as usize].to_owned();
+            // println!("context: {:?}, ngram: {:?}", context, ngram);
+
+            probability += f32::log2(self.ngram_probability(&context, &ngram));
+        }
+
+        probability
+    }
+
+    fn entropy(&self, test_set: &Vec<Word>) -> f32 {
+        // return -1 * _mean(
+        //     [self.logscore(ngram[-1], ngram[:-1]) for ngram in text_ngrams]
+        // )
+        (1.0 / self.n as f32) * self.sequence_probability(test_set)
+    }
+
+    fn perplexity_(&self, test_set: &Vec<Word>) -> f32 {
+        f32::powf(2.0, self.entropy(test_set))
     }
 }
 
@@ -88,7 +120,11 @@ impl MLE {
         MLE::fit_(self, &text, &vocabulary)
     }
 
-    fn generate_word(&mut self) -> Word {
-        MLE::generate_word_(&self)
+    fn generate_word(&mut self, sentence: Vec<Word>) -> Word {
+        MLE::generate_word_(&self, &sentence)
+    }
+
+    fn perplexity(&self, test_set: Vec<Word>) -> f32 {
+        MLE::perplexity_(&self, &test_set)
     }
 }
