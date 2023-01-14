@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
+use itertools::Itertools;
 use pyo3::{pyclass, pymethods};
 
+use crate::tokenization::special_tokens;
 use crate::tokenization::token::Word;
 use crate::utils::wrappers::wrap_sentence;
 
@@ -9,103 +11,95 @@ use crate::utils::wrappers::wrap_sentence;
 #[pyclass]
 pub struct MLE {
     n: u32,
-    text: Vec<Word>,
+    ngrams: Vec<Vec<Word>>,
+    contexts_count: HashMap<Vec<Word>, usize>,
     vocabulary: Vec<Word>
 }
 
 impl MLE {
     fn new_(n: u32) -> Self {
-        if n == 0 {
-            panic!("number of grams should be at least 1.");
+        if n < 2 {
+            panic!("number of grams should be at least 2.");
         }
 
         MLE {
             n,
-            text: vec![],
+            ngrams: vec![],
+            contexts_count: HashMap::new(),
             vocabulary: vec![]
         }
     }
 
+    // transform text into n-grams and add the context counts in a lookup table
     fn fit_(&mut self, text: &Vec<Word>, vocabulary: &Vec<Word>) {
-        self.text = wrap_sentence(text, self.n, true, false);
+        self.ngrams = ngrams(text, self.n);
+        for ngram in self.ngrams.iter() {
+            *self.contexts_count.entry(ngram.to_vec()).or_insert(0) += 1;
+        }
         self.vocabulary = vocabulary.to_vec();
     }
 
+    // generate a word using the provided sentence.
     fn generate_word_(&self, sentence: &Vec<Word>) -> Word {
-        let mut words_frequency: HashMap<Word, f32> = HashMap::new();
+        let mut words_count: HashMap<Word, u32> = HashMap::new();
+        let context: Vec<Word> = sentence[(sentence.len() + 1 - self.n as usize)..].to_vec();
 
-        let context: Vec<Word> = self.text[
-            (sentence.len()-self.n as usize+1)..(sentence.len())
-        ].to_vec();
+        let possible_words: Vec<Word> = self.ngrams.iter()
+            .filter(|ngram| ngram[..(self.n as usize - 1)] == context)
+            .map(|ngram| ngram.last().unwrap().to_owned())
+            .collect();
 
-        for word in self.vocabulary.iter() {
-            let mut full_sentence: Vec<Word> = context.to_owned();
-            full_sentence.push(word.to_owned());
-
-            let frequency = self.sequence_probability(&full_sentence);
-            words_frequency.insert(word.to_owned(), frequency);
+        if possible_words.len() == 0 {
+            return special_tokens::UNK.to_owned();
         }
 
-        println!("{:?}", words_frequency);
+        for word in possible_words.iter() {
+            *words_count.entry(word.to_owned()).or_insert(0) += 1;
+        }
 
-        words_frequency
+
+        words_count
             .iter()
-            .max_by(|a, b| f32::total_cmp(a.1, b.1))
+            .max_by(|a, b| a.1.cmp(b.1))
             .unwrap()
             .0.to_owned()
     }
 
-    fn count_of_sequence(&self, sequence: &Vec<Word>) -> u32 {
-        let mut count: u32 = 0;
+    // count the number of same ngram stored during training
+    fn count_of_ngram(&self, ngram: &Vec<Word>) -> usize {
+        self.ngrams.iter().filter(|ngram_| ngram_ == &ngram).count()
+    }
+
+    // get the frequency of a word after a specific context.
+    fn score(&self, context: &Vec<Word>, word: &Word) -> f32 {
+        let mut ngram: Vec<Word> = context.clone();
+        ngram.push(word.to_owned());
+
+        let context_count: f32 = match self.contexts_count.get(context) {
+            Some(count) => *count as f32,
+            None => 0.0
+        };
+
+        self.count_of_ngram(&ngram) as f32 / context_count
+    }
+
+    // compute the entropy of the model given a test set
+    fn entropy_(&self, test_set: &Vec<Word>) -> f32 {
+        let ngrams: Vec<Vec<Word>> = ngrams(test_set, self.n);
+        let mut total_score: f32 = 0.0;
+
+        for ngram in ngrams.iter() {
+            let (word, context) = ngram.split_last().unwrap();
+            println!("context: {:?}, word: {:?}", &context.to_vec(), word);
+            total_score += f32::log2(self.score(&context.to_vec(), word));
+        }
         
-        for (index, _word) in self.text.iter().enumerate() {
-            if index > self.text.len() - self.n as usize {
-                break;
-            }
-            if sequence.iter()
-            .zip(&self.text[index..index+self.n as usize])
-            .all(|(a,b)| a == b) {
-                count += 1;
-            }
-        }
-        // println!("sequence({:?}), count: {}", sequence, count);
-
-        count
+        -1.0 * (total_score / ngrams.len() as f32)
     }
 
-    fn ngram_probability(&self, context: &Vec<Word>, ngram: &Vec<Word>) -> f32 {
-        self.count_of_sequence(&ngram) as f32 / self.count_of_sequence(&context) as f32
-    }
-
-    // use chain rule of probability to compute the whole probability of a sequence
-    // using its ngram.
-    fn sequence_probability(&self, sequence: &Vec<Word>) -> f32 {
-        let mut probability: f32 = 0.0;
-
-        for i in 0..sequence.len() {
-            let start_index: usize = if i < self.n as usize {0} else {i as usize - self.n as usize + 1};
-            let word_index: usize = i as usize;
-            // println!("start: ({}), end: ({}), test_set: ({:?})", start_index, word_index, sequence);
-
-            let context: Vec<Word> = sequence[start_index..word_index as usize].to_owned();
-            let ngram: Vec<Word> = sequence[start_index..word_index+1 as usize].to_owned();
-            // println!("context: {:?}, ngram: {:?}", context, ngram);
-
-            probability += f32::log2(self.ngram_probability(&context, &ngram));
-        }
-
-        probability
-    }
-
-    fn entropy(&self, test_set: &Vec<Word>) -> f32 {
-        // return -1 * _mean(
-        //     [self.logscore(ngram[-1], ngram[:-1]) for ngram in text_ngrams]
-        // )
-        (1.0 / self.n as f32) * self.sequence_probability(test_set)
-    }
-
+    // compute the perplexity of the model given a test set
     fn perplexity_(&self, test_set: &Vec<Word>) -> f32 {
-        f32::powf(2.0, self.entropy(test_set))
+        f32::powf(2.0, self.entropy_(test_set))
     }
 }
 
@@ -124,7 +118,20 @@ impl MLE {
         MLE::generate_word_(&self, &sentence)
     }
 
+    fn entropy(&self, test_set: Vec<Word>) -> f32 {
+        MLE::entropy_(&self, &test_set)
+    }
+
     fn perplexity(&self, test_set: Vec<Word>) -> f32 {
         MLE::perplexity_(&self, &test_set)
     }
+}
+
+// get ngrams from list of words
+fn ngrams(words: &Vec<Word>, n: u32) -> Vec<Vec<Word>> {
+    wrap_sentence(words, n - 1, true, true)
+        .as_slice()
+        .windows(n as usize)
+        .map(|toto| toto.to_vec())
+        .collect_vec()
 }
