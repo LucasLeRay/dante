@@ -32,9 +32,10 @@ impl MLE {
 
     // transform text into n-grams and add the context counts in a lookup table
     fn fit_(&mut self, text: &Vec<Word>, vocabulary: &Vec<Word>) {
-        self.ngrams = ngrams(text, self.n);
+        self.ngrams = ngrams(text, self.n, true);
         for ngram in self.ngrams.iter() {
-            *self.contexts_count.entry(ngram.to_vec()).or_insert(0) += 1;
+            let context = ngram[..(self.n as usize - 1)].to_vec();
+            *self.contexts_count.entry(context).or_insert(0) += 1;
         }
         self.vocabulary = vocabulary.to_vec();
     }
@@ -80,18 +81,22 @@ impl MLE {
             None => 0.0
         };
 
+        if context_count == 0.0 {
+            return 0.0
+        }
+
         self.count_of_ngram(&ngram) as f32 / context_count
     }
 
     // compute the entropy of the model given a test set
     fn entropy_(&self, test_set: &Vec<Word>) -> f32 {
-        let ngrams: Vec<Vec<Word>> = ngrams(test_set, self.n);
+        let ngrams: Vec<Vec<Word>> = ngrams(test_set, self.n, true);
         let mut total_score: f32 = 0.0;
 
         for ngram in ngrams.iter() {
             let (word, context) = ngram.split_last().unwrap();
-            println!("context: {:?}, word: {:?}", &context.to_vec(), word);
-            total_score += f32::log2(self.score(&context.to_vec(), word));
+            let score = self.score(&context.to_vec(), word);
+            total_score += if score == 0.0 {0.0} else {f32::log2(score)};
         }
         
         -1.0 * (total_score / ngrams.len() as f32)
@@ -128,8 +133,8 @@ impl MLE {
 }
 
 // get ngrams from list of words
-fn ngrams(words: &Vec<Word>, n: u32) -> Vec<Vec<Word>> {
-    wrap_sentence(words, n - 1, true, true)
+fn ngrams(words: &Vec<Word>, n: u32, padding: bool) -> Vec<Vec<Word>> {
+    wrap_sentence(words, n - 1, padding, padding)
         .as_slice()
         .windows(n as usize)
         .map(|toto| toto.to_vec())
