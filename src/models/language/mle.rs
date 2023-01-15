@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use itertools::Itertools;
 use pyo3::{pyclass, pymethods};
+use rand::prelude::*;
+use rand::distributions::WeightedIndex;
 
 use crate::tokenization::special_tokens;
 use crate::tokenization::token::Word;
@@ -58,12 +60,11 @@ impl MLE {
             *words_count.entry(word.to_owned()).or_insert(0) += 1;
         }
 
+        let mut rng = thread_rng();
+        let choices: Vec<(&Word, &u32)> = words_count.iter().collect();
+        let dist = WeightedIndex::new(choices.iter().map(|choice| choice.1)).unwrap();
 
-        words_count
-            .iter()
-            .max_by(|a, b| a.1.cmp(b.1))
-            .unwrap()
-            .0.to_owned()
+        choices[dist.sample(&mut rng)].0.to_owned()
     }
 
     // count the number of same ngram stored during training
