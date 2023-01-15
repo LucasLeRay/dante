@@ -14,7 +14,7 @@ use crate::utils::wrappers::wrap_sentence;
 pub struct MLE {
     n: u32,
     ngrams: Vec<Vec<Word>>,
-    contexts_count: HashMap<Vec<Word>, usize>,
+    context_counter: HashMap<Vec<Word>, Vec<Word>>,
     vocabulary: Vec<Word>
 }
 
@@ -27,7 +27,7 @@ impl MLE {
         MLE {
             n,
             ngrams: vec![],
-            contexts_count: HashMap::new(),
+            context_counter: HashMap::new(),
             vocabulary: vec![]
         }
     }
@@ -36,57 +36,45 @@ impl MLE {
     fn fit_(&mut self, text: &Vec<Word>, vocabulary: &Vec<Word>) {
         self.ngrams = ngrams(text, self.n, true);
         for ngram in self.ngrams.iter() {
-            let context = ngram[..(self.n as usize - 1)].to_vec();
-            *self.contexts_count.entry(context).or_insert(0) += 1;
+            let (word, context) = ngram.split_last().unwrap();
+            self.context_counter.entry(context.to_vec()).or_insert(vec![]).push(word.to_owned());
         }
         self.vocabulary = vocabulary.to_vec();
     }
 
     // generate a word using the provided sentence.
     fn generate_word_(&self, sentence: &Vec<Word>) -> Word {
-        let mut words_count: HashMap<Word, u32> = HashMap::new();
         let context: Vec<Word> = sentence[(sentence.len() + 1 - self.n as usize)..].to_vec();
 
-        let possible_words: Vec<Word> = self.ngrams.iter()
-            .filter(|ngram| ngram[..(self.n as usize - 1)] == context)
-            .map(|ngram| ngram.last().unwrap().to_owned())
-            .collect();
+        let possible_words: Vec<Word> = match self.context_counter.get(&context) {
+            Some(w) => w.to_owned(),
+            None => vec![]
+        };
 
         if possible_words.len() == 0 {
             return special_tokens::UNK.to_owned();
         }
 
-        for word in possible_words.iter() {
-            *words_count.entry(word.to_owned()).or_insert(0) += 1;
-        }
-
         let mut rng = thread_rng();
-        let choices: Vec<(&Word, &u32)> = words_count.iter().collect();
+        let choices: Vec<(&Word, f32)> = possible_words.iter().map(|w| (w, self.score(&context, &w))).collect();
         let dist = WeightedIndex::new(choices.iter().map(|choice| choice.1)).unwrap();
 
         choices[dist.sample(&mut rng)].0.to_owned()
     }
 
-    // count the number of same ngram stored during training
-    fn count_of_ngram(&self, ngram: &Vec<Word>) -> usize {
-        self.ngrams.iter().filter(|ngram_| ngram_ == &ngram).count()
-    }
-
     // get the frequency of a word after a specific context.
     fn score(&self, context: &Vec<Word>, word: &Word) -> f32 {
-        let mut ngram: Vec<Word> = context.clone();
-        ngram.push(word.to_owned());
-
-        let context_count: f32 = match self.contexts_count.get(context) {
-            Some(count) => *count as f32,
-            None => 0.0
+        let possible_words: Vec<Word> = match self.context_counter.get(context) {
+            Some(w) => w.to_owned(),
+            None => vec![]
         };
+        let word_count: usize = possible_words.iter().filter(|possible_word| *possible_word == word).count();
 
-        if context_count == 0.0 {
-            return 0.0
+        if possible_words.len() == 0 || word_count == 0 {
+            return 0.0;
         }
 
-        self.count_of_ngram(&ngram) as f32 / context_count
+        word_count as f32 / possible_words.len() as f32
     }
 
     // compute the entropy of the model given a test set
