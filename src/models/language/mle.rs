@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
-use itertools::Itertools;
 use pyo3::{pyclass, pymethods};
 use rand::prelude::*;
 use rand::distributions::WeightedIndex;
 
+use crate::models::utils::ngrams;
 use crate::tokenization::special_tokens;
 use crate::tokenization::token::Word;
-use crate::utils::wrappers::wrap_sentence;
+
 
 // MLE stands for "Maximum Likelihood Estimation"
 #[pyclass]
@@ -119,13 +119,4 @@ impl MLE {
     fn perplexity(&self, test_set: Vec<Word>) -> f32 {
         MLE::perplexity_(&self, &test_set)
     }
-}
-
-// get ngrams from list of words
-fn ngrams(words: &Vec<Word>, n: u32, padding: bool) -> Vec<Vec<Word>> {
-    wrap_sentence(words, n - 1, padding, padding)
-        .as_slice()
-        .windows(n as usize)
-        .map(|toto| toto.to_vec())
-        .collect_vec()
 }
