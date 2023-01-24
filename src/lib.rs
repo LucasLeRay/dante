@@ -4,7 +4,7 @@ use tokenization::{
     tokenizers::basic::BasicTokenizer,
     pre_tokenizers::PreTokenizerKind
 };
-use models::language::mle::MLE;
+use models::{language::mle::MLE, classification::naive_bayes::NaiveBayesClassifier};
 
 mod models;
 mod tokenization;
@@ -16,6 +16,7 @@ fn dante(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PreTokenizerKind>()?;
 
     m.add_class::<MLE>()?;
+    m.add_class::<NaiveBayesClassifier>()?;
 
     Ok(())
 }

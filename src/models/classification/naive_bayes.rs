@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 
 use itertools::Itertools;
+use pyo3::{pyclass, pymethods};
 
 use crate::tokenization::token::Word;
 
+#[pyclass]
 pub struct NaiveBayesClassifier {
     vocabulary: Vec<Word>,
     // Note that 'priors' and 'likelihood' are expressed as log
@@ -12,11 +14,19 @@ pub struct NaiveBayesClassifier {
 }
 
 impl NaiveBayesClassifier {
+    fn new_() -> Self {
+        NaiveBayesClassifier {
+            vocabulary: vec![],
+            priors: HashMap::new(),
+            likelihood: HashMap::new()
+        }
+    }
+
     // 'train_set' is a mapping of documents over the corrsponding class
-    fn fit(&mut self, train_set: &HashMap<String, Vec<Vec<Word>>>) {
+    fn fit_(&mut self, train_set: &HashMap<String, Vec<Vec<Word>>>) {
         let all_docs: Vec<&Vec<String>> = train_set.values().flatten().collect();
         let n_doc: usize = all_docs.len();
-
+        
         self.vocabulary = all_docs.into_iter()
             .flat_map(|v| v.to_owned())
             .unique()
@@ -52,7 +62,7 @@ impl NaiveBayesClassifier {
             });
     }
 
-    fn predict(&self, test_set: &Vec<Word>) -> String {
+    fn predict_(&self, test_set: &Vec<Word>) -> String {
         self.priors.iter()
         .map(|prior| {
             let class = prior.0;
@@ -70,5 +80,21 @@ impl NaiveBayesClassifier {
         .max_by(|x, y| x.1.abs().partial_cmp(&y.1.abs()).unwrap())
         .unwrap()
         .0.to_owned()
+    }
+}
+
+#[pymethods]
+impl NaiveBayesClassifier {
+    #[new]
+    fn new() -> Self {
+        NaiveBayesClassifier::new_()
+    }
+
+    fn fit(&mut self, train_set: HashMap<String, Vec<Vec<Word>>>) {
+        NaiveBayesClassifier::fit_(self, &train_set)
+    }
+
+    fn predict(&self, test_set: Vec<Word>) -> String {
+        NaiveBayesClassifier::predict_(self, &test_set)
     }
 }
