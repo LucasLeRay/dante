@@ -51,7 +51,7 @@ impl NaiveBayesClassifier {
                 let class_likelihood = self.vocabulary.iter().fold(HashMap::new(), |mut class_likelihood, word| {
                     let count: usize = class_corpus.iter().filter(|w| **w == word).count();
 
-                    let log_likelihood = (count as f32 + 1.0) / (class_corpus.len() + self.vocabulary.len()) as f32;
+                    let log_likelihood = f32::log2((count as f32 + 1.0) / (class_corpus.len() + self.vocabulary.len()) as f32);
                     class_likelihood.insert(word.to_owned(), log_likelihood);
 
                     class_likelihood
@@ -66,6 +66,7 @@ impl NaiveBayesClassifier {
         self.priors.iter()
         .map(|prior| {
             let class = prior.0;
+            let class_prior = prior.1;
             let class_likelihood = self.likelihood.get(class).unwrap();
 
             let sum = test_set.iter().fold(0.0, |mut sum, word| {
@@ -75,7 +76,7 @@ impl NaiveBayesClassifier {
                 sum
             });
 
-            (class, sum)
+            (class, class_prior + sum)
         })
         .max_by(|x, y| x.1.abs().partial_cmp(&y.1.abs()).unwrap())
         .unwrap()
